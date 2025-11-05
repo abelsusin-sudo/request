@@ -46,44 +46,66 @@ function mostrarSeccio(seccioId, elementClicat) {
 
 // Funció per fer peticions al Google Apps Script
 async function ferPeticioGS(accio, parametres = {}) {
+  try {
+    console.log(`🔗 Fent petició ${accio}:`, parametres);
+    
+    // Primer fem una petició OPTIONS preflight
     try {
-        console.log(`🔗 Fent petició ${accio}:`, parametres);
-        
-        const url = new URL(SCRIPT_URL);
-        url.searchParams.append('action', accio);
-        
-        Object.keys(parametres).forEach(key => {
-            if (parametres[key] !== null && parametres[key] !== undefined) {
-                url.searchParams.append(key, parametres[key]);
-            }
-        });
-        
-        console.log('🔗 URL petició:', url.toString());
-        
-        const response = await fetch(url.toString());
-        
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ Resposta rebuda:', data);
-            return data;
-        } else {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-    } catch (error) {
-        console.log('❌ Error en ferPeticioGS:', error);
-        
-        // En cas d'error, provar amb una altra estratègia per a reserves
-        if (accio === 'ferReserva') {
-            try {
-                return await ferPeticioReservaAlternativa(parametres);
-            } catch (fallbackError) {
-                console.log('❌ Error també en mètode alternatiu:', fallbackError);
-            }
-        }
-        
-        return obtenirRespostaPerDefecte(accio, parametres);
+      const preflightUrl = new URL(SCRIPT_URL);
+      preflightUrl.searchParams.append('corsPreflight', 'true');
+      
+      console.log('🛩️  Fent preflight CORS...');
+      await fetch(preflightUrl.toString(), {
+        method: 'OPTIONS',
+        mode: 'cors'
+      });
+      console.log('✅ Preflight CORS exitós');
+    } catch (preflightError) {
+      console.log('⚠️  Preflight CORS fallat, continuant igualment:', preflightError);
     }
+    
+    // Ara fem la petició real
+    const url = new URL(SCRIPT_URL);
+    url.searchParams.append('action', accio);
+    
+    Object.keys(parametres).forEach(key => {
+      if (parametres[key] !== null && parametres[key] !== undefined) {
+        url.searchParams.append(key, parametres[key]);
+      }
+    });
+    
+    console.log('🔗 URL petició real:', url.toString());
+    
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ Resposta rebuda:', data);
+      return data;
+    } else {
+      throw new Error(`Error HTTP: ${response.status}`);
+    }
+    
+  } catch (error) {
+    console.log('❌ Error en ferPeticioGS:', error);
+    
+    // En cas d'error, provar amb una altra estratègia per a reserves
+    if (accio === 'ferReserva') {
+      try {
+        return await ferPeticioReservaAlternativa(parametres);
+      } catch (fallbackError) {
+        console.log('❌ Error també en mètode alternatiu:', fallbackError);
+      }
+    }
+    
+    return obtenirRespostaPerDefecte(accio, parametres);
+  }
 }
 
 // Mètode alternatiu per a reserves (usant POST)
