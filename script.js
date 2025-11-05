@@ -59,15 +59,21 @@ async function ferPeticioGS(accio, parametres = {}) {
     
     console.log('🔗 URL petició:', url.toString());
     
-    const response = await fetch(url.toString());
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json',
+      }
+    });
     
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ Resposta rebuda:', data);
-      return data;
-    } else {
-      throw new Error(`Error HTTP: ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
     }
+    
+    const data = await response.json();
+    console.log('✅ Resposta rebuda:', data);
+    return data;
     
   } catch (error) {
     console.log('❌ Error en ferPeticioGS:', error);
@@ -148,16 +154,30 @@ async function carregarDatesOcupades() {
         
         let datesArray = [];
         
+        // Millorar la gestió de diferents formats de resposta
         if (Array.isArray(resultat)) {
             datesArray = resultat;
         } else if (resultat && Array.isArray(resultat.dates)) {
             datesArray = resultat.dates;
+        } else if (resultat && resultat.datesOcupades && Array.isArray(resultat.datesOcupades)) {
+            datesArray = resultat.datesOcupades;
+        } else if (resultat && resultat.resultat && Array.isArray(resultat.resultat)) {
+            datesArray = resultat.resultat;
         } else {
+            console.log('⚠️ Format de resposta no reconegut:', resultat);
             datesArray = [];
         }
         
+        // Assegurar que totes les dates estan en format YYYY-MM-DD
+        datesArray = datesArray.map(data => {
+            if (typeof data === 'string') {
+                return data.split('T')[0]; // Eliminar hora si existeix
+            }
+            return data;
+        }).filter(data => data); // Eliminar valors null/undefined
+        
         datesOcupades = datesArray;
-        console.log('📅 Dates ocupades carregades:', datesOcupades.length, 'dates');
+        console.log('📅 Dates ocupades carregades:', datesOcupades.length, 'dates:', datesOcupades);
         
         generarCalendariIniciPermanent();
         generarCalendariFiPermanent();
@@ -192,7 +212,18 @@ function estaOcupat(data) {
     const dataNormalitzada = new Date(data.getFullYear(), data.getMonth(), data.getDate());
     const dataString = dataNormalitzada.toISOString().split('T')[0];
     
-    return datesOcupades.includes(dataString);
+    // Debug: mostrar comparació
+    console.log(`🔍 Comprovant data ${dataString} en dates ocupades:`, datesOcupades);
+    
+    const estaOcupada = datesOcupades.some(dataOcupada => {
+        // Normalitzar la data ocupada també
+        const dataOcupadaNormalitzada = new Date(dataOcupada);
+        const dataOcupadaString = dataOcupadaNormalitzada.toISOString().split('T')[0];
+        return dataString === dataOcupadaString;
+    });
+    
+    console.log(`📅 Data ${dataString} ${estaOcupada ? '❌ OCUPADA' : '✅ DISPONIBLE'}`);
+    return estaOcupada;
 }
 
 // Obtenir preu de l'immoble
@@ -413,6 +444,7 @@ function seleccionarDataCompacte(dataString, tipus) {
         dataIniciSeleccionada = data;
         document.getElementById('data-inici').value = formatDataInput(data);
         
+        // Reset data fi si ja no és vàlida
         if (dataFiSeleccionada && dataFiSeleccionada <= data) {
             dataFiSeleccionada = null;
             document.getElementById('data-fi').value = '';
@@ -421,7 +453,7 @@ function seleccionarDataCompacte(dataString, tipus) {
         
         amagarFormulariReserva();
         
-    } else {
+    } else { // tipus === 'fi-permanent'
         if (!dataIniciSeleccionada) {
             mostrarMissatge(
                 document.getElementById('missatge-disponibilitat'),
@@ -440,10 +472,12 @@ function seleccionarDataCompacte(dataString, tipus) {
             return;
         }
         
+        // Verificar tot el rang de dates
         const dataTemp = new Date(dataIniciSeleccionada);
         let totDisponible = true;
         let dataOcupada = null;
         
+        // Verificar cada dia del rang
         while (dataTemp < data) {
             if (estaOcupat(dataTemp)) {
                 totDisponible = false;
@@ -466,9 +500,11 @@ function seleccionarDataCompacte(dataString, tipus) {
         document.getElementById('data-fi').value = formatDataInput(data);
     }
     
+    // Actualitzar calendaris
     generarCalendariIniciPermanent();
     generarCalendariFiPermanent();
     
+    // Verificar si tenim totes les dates per mostrar el botó
     if (dataIniciSeleccionada && dataFiSeleccionada) {
         datesValides = true;
         mostrarMissatge(
@@ -546,6 +582,13 @@ function netejarSeleccions() {
     dataIniciSeleccionada = null;
     dataFiSeleccionada = null;
     
+    // Reset calendaris al mes actual
+    const avui = new Date();
+    mesCalendariInici = avui.getMonth();
+    anyCalendariInici = avui.getFullYear();
+    mesCalendariFi = avui.getMonth();
+    anyCalendariFi = avui.getFullYear();
+    
     document.getElementById('data-inici').value = '';
     document.getElementById('data-fi').value = '';
     document.getElementById('nom').value = '';
@@ -557,7 +600,8 @@ function netejarSeleccions() {
     document.getElementById('missatge-disponibilitat').innerHTML = '';
     document.getElementById('missatge-reserva').innerHTML = '';
     
-    inicialitzarCalendarisCompactes();
+    // Recarregar dates ocupades per l'immoble seleccionat
+    carregarDatesOcupades();
 }
 
 // Funció per validar el formulari
@@ -711,27 +755,35 @@ async function provarConnexio() {
   console.log('🔍 Provant connexió amb Google Apps Script...');
   
   try {
-    // Prova simple
-    const testUrl = SCRIPT_URL + '?action=obtenirPreuImmoble&immoble=Loft+Barcelona';
-    const response = await fetch(testUrl, { 
-      method: 'GET',
-      mode: 'cors'
-    });
+    // Prova amb diferents accions
+    const accions = ['obtenirPreuImmoble', 'obtenirDatesOcupades'];
     
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ CONNEXIÓ EXITOSA:', data);
-      return true;
-    } else {
-      console.log('❌ Error en resposta:', response.status);
-      return false;
+    for (const accio of accions) {
+      const testUrl = `${SCRIPT_URL}?action=${accio}&immoble=Loft+Barcelona`;
+      console.log(`🔗 Provant ${accio}...`);
+      
+      const response = await fetch(testUrl, { 
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ ${accio} EXITÓS:`, data);
+      } else {
+        console.log(`⚠️ ${accio} - Error:`, response.status);
+      }
     }
+    
+    return true;
   } catch (error) {
     console.log('❌ Error de connexió:', error);
     return false;
   }
 }
-
 // Prova la connexió en carregar la pàgina
 document.addEventListener('DOMContentLoaded', function() {
   setTimeout(() => {
