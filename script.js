@@ -44,27 +44,10 @@ function mostrarSeccio(seccioId, elementClicat) {
     }
 }
 
-// Funció per fer peticions al Google Apps Script
 async function ferPeticioGS(accio, parametres = {}) {
   try {
     console.log(`🔗 Fent petició ${accio}:`, parametres);
     
-    // Primer fem una petició OPTIONS preflight
-    try {
-      const preflightUrl = new URL(SCRIPT_URL);
-      preflightUrl.searchParams.append('corsPreflight', 'true');
-      
-      console.log('🛩️  Fent preflight CORS...');
-      await fetch(preflightUrl.toString(), {
-        method: 'OPTIONS',
-        mode: 'cors'
-      });
-      console.log('✅ Preflight CORS exitós');
-    } catch (preflightError) {
-      console.log('⚠️  Preflight CORS fallat, continuant igualment:', preflightError);
-    }
-    
-    // Ara fem la petició real
     const url = new URL(SCRIPT_URL);
     url.searchParams.append('action', accio);
     
@@ -74,15 +57,9 @@ async function ferPeticioGS(accio, parametres = {}) {
       }
     });
     
-    console.log('🔗 URL petició real:', url.toString());
+    console.log('🔗 URL petició:', url.toString());
     
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      mode: 'cors',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
+    const response = await fetch(url.toString());
     
     if (response.ok) {
       const data = await response.json();
@@ -95,7 +72,7 @@ async function ferPeticioGS(accio, parametres = {}) {
   } catch (error) {
     console.log('❌ Error en ferPeticioGS:', error);
     
-    // En cas d'error, provar amb una altra estratègia per a reserves
+    // En cas d'error, provar amb POST per a reserves
     if (accio === 'ferReserva') {
       try {
         return await ferPeticioReservaAlternativa(parametres);
