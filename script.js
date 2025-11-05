@@ -729,6 +729,38 @@ function mostrarModalReserva() {
 function tancarModal() {
     document.getElementById('modal-reserva').style.display = 'none';
 }
+// Funció per provar la connexió
+async function provarConnexio() {
+  console.log('🔍 Provant connexió amb Google Apps Script...');
+  
+  try {
+    // Prova simple
+    const testUrl = SCRIPT_URL + '?action=obtenirPreuImmoble&immoble=Loft+Barcelona';
+    const response = await fetch(testUrl, { 
+      method: 'GET',
+      mode: 'cors'
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ CONNEXIÓ EXITOSA:', data);
+      return true;
+    } else {
+      console.log('❌ Error en resposta:', response.status);
+      return false;
+    }
+  } catch (error) {
+    console.log('❌ Error de connexió:', error);
+    return false;
+  }
+}
+
+// Prova la connexió en carregar la pàgina
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(() => {
+    provarConnexio();
+  }, 1000);
+});
 
 // Inicialització
 document.addEventListener('DOMContentLoaded', function() {
