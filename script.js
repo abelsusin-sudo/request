@@ -1,5 +1,5 @@
 // ⚠️ CONFIGURACIÓ: Canvia aquest valor amb el URL del teu deployment
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyK8HFBhQ84GlzlmQXZyvEUCTEAc8_rIyH93HkR-sAZIzxcj4vPSiKrEmheocZ4Uycg/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKg6APrukYi1iH6sCjOEVA5VsqGxA7uZBSCI8rTkTZAeMuGGUx7MiKNVr41JQ_atOs/exec';
 
 // Variables globals
 let immobleSeleccionat = 'Loft Barcelona';
