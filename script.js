@@ -321,20 +321,12 @@ function inicialitzarMonitorConnexio() {
   window.addEventListener('online', processarPeticionsPendents);
 }
 // Funció auxiliar per respostes per defecte en cas d'error
+// Funció auxiliar per respostes per defecte en cas d'error
 function obtenirRespostaPerDefecte(accio, parametres) {
     console.log('🔄 Usant resposta per defecte per:', accio);
     
-    const avui = new Date();
-    const dema = new Date(avui);
-    dema.setDate(dema.getDate() + 1);
-    
-    // Generar algunes dates ocupades de prova
-    const datesOcupadesProva = [];
-    for (let i = 0; i < 5; i++) {
-      const data = new Date(avui);
-      data.setDate(data.getDate() + Math.floor(Math.random() * 30) + 5);
-      datesOcupadesProva.push(data.toISOString().split('T')[0]);
-    }
+    // NO generar dates ocupades de prova - retornar array buit
+    const datesOcupadesProva = []; // Array buit en lloc de dates de prova
     
     const respostes = {
         'obtenirDatesOcupades': { 
@@ -397,6 +389,7 @@ Nova sol·licitud de reserva:
 }
 
 // Carregar dates ocupades
+// Carregar dates ocupades
 async function carregarDatesOcupades() {
     console.log('🔄 Carregant dates ocupades per:', immobleSeleccionat);
     
@@ -419,8 +412,8 @@ async function carregarDatesOcupades() {
         } else if (resultat && resultat.resultat && Array.isArray(resultat.resultat)) {
             datesArray = resultat.resultat;
         } else {
-            console.log('⚠️ Format de resposta no reconegut:', resultat);
-            datesArray = [];
+            console.log('⚠️ Format de resposta no reconegut o sense dates:', resultat);
+            datesArray = []; // Array buit si no es reconeix el format
         }
         
         // Assegurar que totes les dates estan en format YYYY-MM-DD
@@ -439,7 +432,8 @@ async function carregarDatesOcupades() {
         
     } catch (error) {
         console.log('❌ Error carregant dates:', error);
-        datesOcupades = [];
+        // En cas d'error, no carregar dates per defecte
+        datesOcupades = []; // Array completament buit
         generarCalendariIniciPermanent();
         generarCalendariFiPermanent();
     }
