@@ -45,41 +45,43 @@ function mostrarSeccio(seccioId, elementClicat) {
 }
 
 async function ferPeticioGS(accio, parametres = {}) {
-  // URL del teu Google Apps Script (el mateix que ja tens)
-  const scriptUrl = SCRIPT_URL;
+  console.log(`🔗 Fent petició ${accio}:`, parametres);
   
   try {
-    console.log(`🔗 Fent petició ${accio}:`, parametres);
+    // Ús de la nova URL de Web App
+    const url = SCRIPT_URL;
     
-    // Crear URL amb paràmetres
-    const url = new URL(scriptUrl);
-    const params = new URLSearchParams();
-    params.append('action', accio);
+    // Crear FormData per a POST
+    const formData = new URLSearchParams();
+    formData.append('action', accio);
     
     // Afegir tots els paràmetres
     Object.keys(parametres).forEach(key => {
       if (parametres[key] !== null && parametres[key] !== undefined) {
-        params.append(key, String(parametres[key]));
+        formData.append(key, parametres[key]);
       }
     });
     
+    console.log('📤 Enviant petició POST a:', url);
+    
     // Fer la petició amb timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
     
-    const response = await fetch(scriptUrl, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       },
-      body: params,
-      signal: controller.signal
+      body: formData,
+      signal: controller.signal,
+      mode: 'cors' // Important: mode cors
     });
     
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`Error HTTP: ${response.status}`);
+      throw new Error(`Error HTTP: ${response.status} ${response.statusText}`);
     }
     
     const data = await response.json();
@@ -89,10 +91,10 @@ async function ferPeticioGS(accio, parametres = {}) {
   } catch (error) {
     console.log('❌ Error en ferPeticioGS:', error);
     
-    // Si és error de timeout o xarxa, provar mètode alternatiu
-    if (error.name === 'AbortError' || error.message.includes('Failed to fetch')) {
-      console.log('🔄 Probant mètode alternatiu...');
-      return await ferPeticioAlternativa(accio, parametres);
+    // Si és error de CORS, provar amb mètode diferent
+    if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+      console.log('🔄 Probant mètode sense CORS...');
+      return await ferPeticioSenseCORS(accio, parametres);
     }
     
     return obtenirRespostaPerDefecte(accio, parametres);
