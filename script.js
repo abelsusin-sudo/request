@@ -1012,7 +1012,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Inicialització
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Inicialitzant sistema...');
-    
+    // Inicialitzar monitor de connexió
+  inicialitzarMonitorConnexio();
+  
+  // Processar peticions pendents cada 30 segons
+  setInterval(processarPeticionsPendents, 30000);
     document.querySelectorAll('.btn-immoble').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.btn-immoble').forEach(b => b.classList.remove('seleccionat'));
